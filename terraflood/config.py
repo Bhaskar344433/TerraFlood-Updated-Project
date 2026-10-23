@@ -112,3 +112,43 @@ FALLBACK_MODE: bool = os.getenv("TERRAFLOOD_FALLBACK_MODE", "false").lower() in 
 
 # Minimum flood polygon area to retain in vectorization (km²)
 MIN_FLOOD_POLYGON_AREA_SQKM: float = 0.005
+
+# -----------------------------------------------------------------------------
+# Multi-Temporal Change Detection & Baseline Windows
+# -----------------------------------------------------------------------------
+# Multi-temporal dry season reference baseline for false-positive sandbank removal
+DRY_SEASON_BASELINE_WINDOW: Tuple[str, str] = ("2026-03-01", "2026-04-15")
+
+# -----------------------------------------------------------------------------
+# JRC Historical Occurrence & Anomaly Cutoff
+# -----------------------------------------------------------------------------
+# Only highlight flood pixels if historical permanent/seasonal water occurrence < 5%
+JRC_ANOMALY_OCCURRENCE_THRESHOLD: int = 5
+
+# -----------------------------------------------------------------------------
+# Agricultural Loss (ESA WorldCover 10m Cropland)
+# -----------------------------------------------------------------------------
+ESA_WORLDCOVER_DATASET: str = "ESA/WorldCover/v200"
+ESA_CROPLAND_CLASS_VALUE: int = 40  # Cropland class in WorldCover
+
+# -----------------------------------------------------------------------------
+# HAND (Height Above Nearest Drainage) Vulnerability Physics
+# -----------------------------------------------------------------------------
+MERIT_HYDRO_DATASET: str = "MERIT/Hydro/v1_0_1"
+HAND_VULNERABILITY_THRESHOLD_METERS: float = 15.0
+
+# -----------------------------------------------------------------------------
+# GFS Live 48-Hour Precipitation Forecast
+# -----------------------------------------------------------------------------
+GFS_PRECIP_DATASET: str = "NOAA/GFS0P25"
+
+# -----------------------------------------------------------------------------
+# Economic Infrastructure Damage Rate
+# -----------------------------------------------------------------------------
+# Highway repair and remediation cost standard: Rs 50,000,000 (50 Lakhs / 5 Crore) per severed km
+ROAD_DAMAGE_COST_PER_KM_NPR: float = 50_000_000.0
+
+# Mock Government Command Center Email
+MOCK_COMMAND_CENTER_EMAIL: str = "ndrf.mock@gmail.com"
+DUMMY_FLOOD_GEOJSON_PATH: Path = CACHE_DIR / "dummy_flood_mask.geojson"
+

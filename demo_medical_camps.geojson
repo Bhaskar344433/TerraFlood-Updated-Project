@@ -1,0 +1,12 @@
+{
+"type": "FeatureCollection",
+"name": "demo_medical_camps",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "camp_id": "CAMP-001", "name": "Koshi Flood Evacuation Camp (Koshi Corridor)", "facility_type": "Emergency Field Hospital", "organization": "Nepal Red Cross / WHO", "capacity_beds": 120, "medical_staff": 18, "lat": 26.78, "lon": 87.08, "contact_channel": "VHF-Ch-16" }, "geometry": { "type": "Point", "coordinates": [ 87.08, 26.78 ] } },
+{ "type": "Feature", "properties": { "camp_id": "CAMP-002", "name": "Biratnagar Sub-Metropolitan Relief Station", "facility_type": "Mobile Trauma Clinic", "organization": "Doctors Without Borders (MSF)", "capacity_beds": 80, "medical_staff": 12, "lat": 26.48, "lon": 87.28, "contact_channel": "HF-8422kHz" }, "geometry": { "type": "Point", "coordinates": [ 87.28, 26.48 ] } },
+{ "type": "Feature", "properties": { "camp_id": "CAMP-003", "name": "Janakpur Primary Relief Post", "facility_type": "Maternal & Child Health Post", "organization": "UNICEF / Ministry of Health", "capacity_beds": 65, "medical_staff": 9, "lat": 26.71, "lon": 85.92, "contact_channel": "VHF-Ch-09" }, "geometry": { "type": "Point", "coordinates": [ 85.92, 26.71 ] } },
+{ "type": "Feature", "properties": { "camp_id": "CAMP-004", "name": "Kamalamai High-Ground Trauma Staging Point", "facility_type": "Air-Drop Logistics & Surgical Base", "organization": "Nepal Army Disaster Directorate", "capacity_beds": 150, "medical_staff": 25, "lat": 27.22, "lon": 85.9, "contact_channel": "SAT-IRIDIUM-01" }, "geometry": { "type": "Point", "coordinates": [ 85.9, 27.22 ] } },
+{ "type": "Feature", "properties": { "camp_id": "CAMP-005", "name": "Chitwan Floodplain Medical Outpost", "facility_type": "Waterborne Rescue & First-Aid Post", "organization": "Armed Police Force (APF) Disaster Unit", "capacity_beds": 45, "medical_staff": 8, "lat": 27.35, "lon": 84.45, "contact_channel": "VHF-Ch-12" }, "geometry": { "type": "Point", "coordinates": [ 84.45, 27.35 ] } }
+]
+}
