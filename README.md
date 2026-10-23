@@ -49,20 +49,70 @@ Unlike static mockups, TerraFlood operates as a complete, scientific 4-stage pip
 
 ```
 Terraflood/
-├── create_demo_camps.py       # Standalone sample NGO camps GeoJSON generator
-├── demo_medical_camps.geojson # Ready-made sample NGO medical camps
-├── run.py                     # Root platform launcher
-├── requirements.txt           # Exact pinned Python dependencies
-├── terraflood/
-│   ├── config.py              # Control Panel: constants, thresholds, damage rates
-│   ├── engine.py              # 7-stage Earth Observation & ML satellite ingestion engine
-│   ├── impact.py              # Cached vector impact engine, safe routes & camp assessor
-│   ├── app.py                 # Tactical Operations HUD (4-tab Streamlit dashboard)
-│   ├── export_utils.py        # PDF SitRep compiler, GeoJSON exporter, and 1-click emailer
-│   ├── cache/                 # Local high-fidelity raster masks & dummy GeoJSON
-│   ├── exports/               # Generated PDF SitReps, GeoJSONs, and CSV rankings
-│   └── data/                  # Local HDX / OSM Shapefiles (Roads & Admin units)
+├── create_demo_camps.py       # Standalone generator: synthesizes realistic sample NGO relief camps GeoJSON
+├── demo_medical_camps.geojson # Ready-made sample NGO medical camps dataset (for live Tab 3 drag-and-drop)
+├── run.py                     # Root platform launcher (cross-platform entrypoint with automated path resolution)
+├── requirements.txt           # Exact pinned Python dependencies (GeoPandas, Streamlit, Folium, Rasterio, FPDF2)
+│
+├── terraflood/                # Core modular platform package
+│   ├── __init__.py            # Package initialization and namespace export
+│   ├── config.py              # Single source of truth: AOI bbox [84.0, 26.5, 87.5, 27.5], temporal windows,
+│   │                          # thresholds (SAR 1.25 dB, Slope 5°, JRC 80%), damage rates, and asset paths
+│   ├── engine.py              # 7-stage Earth Observation & ML satellite ingestion engine:
+│   │                          # - Sentinel-1 SAR IW VV multi-temporal baseline subtraction
+│   │                          # - Sentinel-2 Optical MSI MNDWI & NDWI cloud-screened fusion
+│   │                          # - JRC Surface Water occurrence & <5% anomaly detection
+│   │                          # - Copernicus DEM GLO-30 slope correction & MERIT Hydro HAND (<15m) physics
+│   │                          # - ESA WorldCover 10m Cropland agricultural loss accounting (UN FAO)
+│   │                          # - NOAA GFS live 48-hour cumulative precipitation forecast modeling
+│   │                          # - Unsupervised Machine Learning (SNIC superpixels + Weka K-Means)
+│   ├── impact.py              # Spatial Vector Analytics & Intersection Engine:
+│   │                          # - RAM caching (@st.cache_data) for rapid 3.11GB shapefile handling
+│   │                          # - Raster-to-polygon vectorization & metric CRS (EPSG:32645) area calculation
+│   │                          # - GHSL zonal population displacement summation within flood polygons
+│   │                          # - OpenStreetMap severed road network clipping & bright green safe route analysis
+│   │                          # - Infrastructure economic damage calculation at ₹50,000,000 / km
+│   │                          # - Settlement exposure % & logarithmic impact scoring (Top 5 prioritization)
+│   │                          # - Custom NGO spatial file uploader & medical camp submersion classifier
+│   ├── app.py                 # Tactical Operations Command Center HUD (Streamlit + Folium):
+│   │                          # - Custom obsidian dark operations styling (#08090C, #FF6D00, #FF1744, #00E676)
+│   │                          # - Tab 1: Tactical Map & Metrics (Top KPIs, Watermark-free Esri Dark map, Safe routes)
+│   │                          # - Tab 2: Scientific Earth Analytics (Agriculture, GFS Weather, ML & HAND layers)
+│   │                          # - Tab 3: NGO Custom Logistics (Shapefile/GeoJSON uploader, Camp status, Sphere calculator)
+│   │                          # - Tab 4: Situation Report & Comms (1-Click SitRep Emailer, GeoJSON/CSV/PDF exports)
+│   ├── export_utils.py        # Automated Humanitarian Packaging & Export Utilities:
+│   │                          # - Executive 1-Page Disaster Situation Report (SitRep) PDF compiler (FPDF2)
+│   │                          # - WGS84 GeoJSON exporter for flood polygons & severed transport lines
+│   │                          # - Priority settlement exposure ranking CSV exporter
+│   │                          # - 1-Click SitRep Emailer via Python smtplib with mock government dispatch
+│   │
+│   ├── cache/                 # Local high-fidelity runtime raster & vector cache:
+│   │   ├── terraflood_extent_mask.tif  # Calibrated flood inundation GeoTIFF mask (WGS84)
+│   │   ├── ghsl_population_terai.tif   # 100m JRC GHSL population density grid (float32)
+│   │   └── dummy_flood_mask.geojson    # Pre-vectorized flood polygons for instantaneous offline fail-safe
+│   │
+│   ├── exports/               # Generated humanitarian field deliverables:
+│   │   ├── TerraFlood_SitRep_Terai.pdf # Executive 1-page official Disaster Situation Report
+│   │   ├── terraflood_extent.geojson   # Standard GeoJSON vector flood footprint
+│   │   ├── terraflood_severed_roads.geojson # Severed highway corridors with classification metadata
+│   │   └── terraflood_settlements_ranking.csv # Tabular impact rankings across all 406 Terai VDCs
+│   │
+│   └── data/                  # Local ground vector datasets (Offline ground truth):
+│       ├── roads/             # Humanitarian OpenStreetMap (HOT-OSM) Nepal road network lines (~2.9 GB)
+│       └── admin/             # HDX MoFALD / HRRP official village boundaries (406 units in AOI)
 ```
+
+### In-Depth Component Role Breakdown
+
+| Component | Primary Function | Scientific & Operational Significance |
+| :--- | :--- | :--- |
+| **`config.py`** | Central configuration registry | Eliminates hardcoded magic numbers; centralizes satellite temporal windows, sensor cutoffs, and damage valuation rates. |
+| **`engine.py`** | Multi-sensor satellite engine | Fuses all 4 Category A datasets (SAR, Optical, DEM, JRC Water) into clean, terrain-corrected flood extents. |
+| **`impact.py`** | Demographic & infrastructure engine | Ingests both Category B datasets (GHSL Population & Local Shapefiles) to compute human displacement, severed routes, and safe green corridors. |
+| **`app.py`** | 4-Tab Tactical HUD | Delivers zero-latency visual telemetry to field commanders, disaster response directors, and relief NGOs. |
+| **`export_utils.py`**| Humanitarian packaging | Generates UN-OCHA / GDACS compatible 1-page PDF SitReps and automates SMTP dispatch to government disaster teams. |
+| **`cache/`** | Autonomous offline storage | Guarantees 100% platform availability even during total venue Wi-Fi collapse or API rate-limit timeouts. |
+| **`data/`** | Ground reference shapefiles | Provides validated administrative boundaries and dense road networks across Nepal's high-risk Terai basins. |
 
 ---
 
