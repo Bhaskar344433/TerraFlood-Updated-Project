@@ -529,10 +529,10 @@ if is_offline:
 # MAIN DASHBOARD TABS (Upgrade 1)
 # -----------------------------------------------------------------------------
 tab_map, tab_sci, tab_ngo, tab_sitrep = st.tabs([
-    "🗺️ TAB 1: TACTICAL MAP & METRICS",
-    "🔬 TAB 2: SCIENTIFIC ANALYTICS (AGRICULTURE & WEATHER)",
-    "🏥 TAB 3: NGO CUSTOM LOGISTICS (FILE UPLOAD)",
-    "📄 TAB 4: SITREP EXPORT & COMMS",
+    "🗺️ Tactical Map & Metrics",
+    "🔬 Scientific Earth Analytics",
+    "🏥 NGO Logistics & Relief Camps",
+    "📄 Situation Report & Comms",
 ])
 
 
@@ -615,26 +615,36 @@ with tab_map:
         unsafe_allow_html=True,
     )
 
-    # 3. Folium Tactical Map (Upgrade 2: Completely free open-source dark tiles without watermarks)
+    # 3. Folium Tactical Map (100% Watermark-Free Esri Dark & Satellite Basemaps)
     m = folium.Map(
         location=config.MAP_DEFAULT_CENTER,
         zoom_start=config.MAP_DEFAULT_ZOOM,
-        tiles="CartoDB dark_matter",
+        tiles=None,
         control_scale=True,
         prefer_canvas=True,
     )
 
-    # Additional free open-source base layers
+    # Completely free open-source base layers (NO API KEY & NO WATERMARK)
     folium.TileLayer(
-        tiles="CartoDB positron",
-        name="Light Tactical (Positron)",
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri World Dark Gray",
+        name="Dark Tactical (Obsidian Dark)",
+        control=True,
+        show=True,
+    ).add_to(m)
+
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri World Imagery",
+        name="High-Res Earth Satellite",
         control=True,
         show=False,
     ).add_to(m)
 
     folium.TileLayer(
         tiles="OpenStreetMap",
-        name="Standard OpenStreetMap",
+        attr="OpenStreetMap contributors",
+        name="Standard Street Map",
         control=True,
         show=False,
     ).add_to(m)
@@ -773,7 +783,7 @@ with tab_map:
     plugins.Fullscreen(position="topleft").add_to(m)
     plugins.MeasureControl(position="bottomleft", primary_length_unit="kilometers").add_to(m)
     plugins.MiniMap(toggle_display=True, position="bottomright").add_to(m)
-    folium.LayerControl(position="topright", collapsed=False).add_to(m)
+    folium.LayerControl(position="topright", collapsed=True).add_to(m)
 
     # Render Map
     st_folium(m, width="100%", height=530, returned_objects=[])
