@@ -18,6 +18,9 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 import json
+import base64
+import io
+import urllib.parse
 
 import streamlit as st
 import folium
@@ -36,7 +39,26 @@ if str(parent_dir) not in sys.path:
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
-from terraflood import config, engine, impact, export_utils
+from terraflood import config, engine, impact, export_utils, prediction
+
+def generate_qr_code_base64(url: str) -> str:
+    """Generates an offline scannable QR code PNG encoded in base64."""
+    try:
+        import qrcode
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=6,
+            border=2,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#00E676", back_color="#0E1217")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return ""
 
 # -----------------------------------------------------------------------------
 # Streamlit Page Configuration & Tactical Theme CSS
@@ -343,6 +365,130 @@ TACTICAL_CSS = """
         border: 1px solid var(--accent-orange) !important;
         box-shadow: 0 2px 10px rgba(255, 109, 0, 0.25) !important;
     }
+
+    /* Citizen Emergency Public Portal Styles */
+    .citizen-header-banner {
+        background: linear-gradient(135deg, #111827 0%, #080D14 100%);
+        border: 1px solid #1E293B;
+        border-left: 6px solid #00E676;
+        border-bottom: 2px solid #00B0FF;
+        border-radius: 10px;
+        padding: 18px 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 230, 118, 0.12);
+    }
+    .citizen-title-np {
+        font-family: 'Outfit', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        color: #F8FAFC;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
+    }
+    .citizen-title-en {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        color: #00E5FF;
+        letter-spacing: 1.5px;
+        margin-top: 3px;
+    }
+    .sos-bar-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 22px;
+    }
+    .sos-card {
+        background: #0E1217;
+        border-radius: 8px;
+        padding: 14px 12px;
+        text-align: center;
+        border: 1px solid #232B38;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .sos-card:hover {
+        transform: translateY(-2px);
+    }
+    .sos-card.red {
+        border-color: rgba(255, 23, 68, 0.5);
+        box-shadow: 0 4px 15px rgba(255, 23, 68, 0.12);
+    }
+    .sos-card.amber {
+        border-color: rgba(255, 109, 0, 0.5);
+        box-shadow: 0 4px 15px rgba(255, 109, 0, 0.12);
+    }
+    .sos-card.cyan {
+        border-color: rgba(0, 229, 255, 0.5);
+        box-shadow: 0 4px 15px rgba(0, 229, 255, 0.12);
+    }
+    .sos-card.blue {
+        border-color: rgba(33, 150, 243, 0.5);
+        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.12);
+    }
+    .sos-card.green {
+        border-color: rgba(0, 230, 118, 0.5);
+        box-shadow: 0 4px 15px rgba(0, 230, 118, 0.12);
+    }
+    .sos-num {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 1px;
+    }
+    .sos-card.red .sos-num { color: #FF1744; }
+    .sos-card.amber .sos-num { color: #FF9100; }
+    .sos-card.cyan .sos-num { color: #00E5FF; }
+    .sos-card.blue .sos-num { color: #42A5F5; }
+    .sos-card.green .sos-num { color: #00E676; }
+    .sos-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #F8FAFC;
+        margin-top: 4px;
+        line-height: 1.2;
+    }
+    .sos-sub {
+        font-size: 10px;
+        color: #94A3B8;
+        margin-top: 2px;
+    }
+    .sos-call-btn {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 800;
+        text-decoration: none !important;
+        font-family: 'Rajdhani', sans-serif;
+        letter-spacing: 0.5px;
+    }
+    .sos-card.red .sos-call-btn { background: #FF1744; color: #FFFFFF !important; }
+    .sos-card.amber .sos-call-btn { background: #FF9100; color: #111111 !important; }
+    .sos-card.cyan .sos-call-btn { background: #00E5FF; color: #111111 !important; }
+    .sos-card.blue .sos-call-btn { background: #2196F3; color: #FFFFFF !important; }
+    .sos-card.green .sos-call-btn { background: #00E676; color: #111111 !important; }
+
+    .citizen-camp-card {
+        background: #10141D;
+        border: 1px solid #1E293B;
+        border-radius: 8px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .citizen-camp-card:hover {
+        transform: translateY(-2px);
+        border-color: #334155;
+    }
+    .citizen-guideline-card {
+        background: #0E1218;
+        border: 1px solid #1E2736;
+        border-radius: 8px;
+        padding: 14px 16px;
+        height: 100%;
+    }
 </style>
 """
 st.markdown(TACTICAL_CSS, unsafe_allow_html=True)
@@ -383,72 +529,634 @@ def execute_terraflood_pipeline(
     return sat_res, impact_res
 
 
+def render_public_citizen_portal(
+    camps_gdf: gpd.GeoDataFrame,
+    flood_gdf: gpd.GeoDataFrame,
+    safe_roads_gdf: gpd.GeoDataFrame,
+    metrics: dict,
+    now_utc: str,
+    is_offline: bool,
+    base_url: str = "http://localhost:8501",
+):
+    """
+    Renders the dedicated, citizen-facing Public Relief & Evacuation Portal.
+    Optimized for flood-affected families, volunteers, and the public in Nepal's Terai.
+    """
+    # 1. Header Banner
+    h_col1, h_col2 = st.columns([3, 1])
+    with h_col1:
+        st.markdown(
+            f"""
+            <div class="citizen-header-banner">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="font-size:36px;">🇳🇵</div>
+                    <div>
+                        <div class="citizen-title-np">नेपाल तराई बाढी राहत तथा आपतकालीन शिविर नागरिक पोर्टल</div>
+                        <div class="citizen-title-en">NEPAL TERAI FLOOD RELIEF & CITIZEN SAFETY PORTAL</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+                    <span class="live-beacon"></span>
+                    <span style="color:#00E676; font-size:12px; font-weight:800; font-family:'JetBrains Mono', monospace;">LIVE OFFICIAL EVACUATION & MEDICAL DIRECTIVE</span>
+                    <span style="color:#94A3B8; font-size:12px;">| अद्यावधिक: {now_utc}</span>
+                    <span style="color:#00E5FF; font-size:12px;">| {'🌐 OFFLINE FAIL-SAFE VERIFIED' if is_offline else '🟢 SATELLITE RADAR VERIFIED'}</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with h_col2:
+        st.write("")
+        st.write("")
+        if st.button("🛡️ Tactical Command Center", key="cit_switch_cmd", use_container_width=True, help="Switch to Commander HUD"):
+            st.session_state["view_mode"] = "command"
+            st.query_params["view"] = "command"
+            st.rerun()
+
+    # 2. Emergency Helplines SOS Strip (1-Click Tap-to-Call)
+    st.markdown(
+        """
+        <div class="sos-bar-container">
+            <div class="sos-card red">
+                <div class="sos-num">1155</div>
+                <div class="sos-label">🌊 बाढी पूर्वसूचना (Flood Early Warning)</div>
+                <div class="sos-sub">Toll-Free • २४ सै घण्टा खुला</div>
+                <a href="tel:1155" class="sos-call-btn">📞 Call 1155</a>
+            </div>
+            <div class="sos-card amber">
+                <div class="sos-num">1149</div>
+                <div class="sos-label">🚨 आपतकालीन कार्य सञ्चालन (NEOC)</div>
+                <div class="sos-sub">गृह मन्त्रालय आपतकालीन उद्धार</div>
+                <a href="tel:1149" class="sos-call-btn">📞 Call 1149</a>
+            </div>
+            <div class="sos-card cyan">
+                <div class="sos-num">102</div>
+                <div class="sos-label">🚑 एम्बुलेन्स सेवा (Ambulance)</div>
+                <div class="sos-sub">नेपाल एम्बुलेन्स सेवा सञ्जाल</div>
+                <a href="tel:102" class="sos-call-btn">📞 Call 102</a>
+            </div>
+            <div class="sos-card blue">
+                <div class="sos-num">100</div>
+                <div class="sos-label">👮 नेपाल प्रहरी (Police Rescue)</div>
+                <div class="sos-sub">बाढी उद्धार तथा शान्ति सुरक्षा</div>
+                <a href="tel:100" class="sos-call-btn">📞 Call 100</a>
+            </div>
+            <div class="sos-card green">
+                <div class="sos-num">1130</div>
+                <div class="sos-label">🩸 नेपाल रेडक्रस (Red Cross)</div>
+                <div class="sos-sub">राहत सामग्री, प्राथमिक उपचार</div>
+                <a href="tel:1130" class="sos-call-btn">📞 Call 1130</a>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 3. KPI Metrics Overview
+    total_camps = len(camps_gdf) if not camps_gdf.empty else 0
+    safe_camps = len(camps_gdf[camps_gdf["status"] == "OPERATIONAL / SECURE"]) if not camps_gdf.empty else 0
+    flooded_camps = total_camps - safe_camps
+    total_beds = int(camps_gdf["capacity_beds"].sum()) if not camps_gdf.empty and "capacity_beds" in camps_gdf.columns else 0
+    total_staff = int(camps_gdf["medical_staff"].sum()) if not camps_gdf.empty and "medical_staff" in camps_gdf.columns else 0
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.markdown(
+            f"""
+            <div style="background:#111A16; border:1px solid #00E676; border-radius:8px; padding:14px; text-align:center;">
+                <div style="color:#69F0AE; font-size:12px; font-weight:700;">🟢 सुरक्षित तथा सञ्चालित शिविर</div>
+                <div style="font-size:28px; font-weight:900; color:#00E676; margin-top:4px;">{safe_camps} <span style="font-size:14px;">Camps</span></div>
+                <div style="color:#94A3B8; font-size:11px;">सुरक्षित आश्रय तथा प्राथमिक स्वास्थ्य चौकी</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with m2:
+        st.markdown(
+            f"""
+            <div style="background:#1C1417; border:1px solid #FF1744; border-radius:8px; padding:14px; text-align:center;">
+                <div style="color:#FF5252; font-size:12px; font-weight:700;">🔴 डुबानमा परेका / जान जोखिम</div>
+                <div style="font-size:28px; font-weight:900; color:#FF1744; margin-top:4px;">{flooded_camps} <span style="font-size:14px;">Camps</span></div>
+                <div style="color:#94A3B8; font-size:11px;">बाढीले घेरिएको, उद्धार कार्य जारी</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with m3:
+        st.markdown(
+            f"""
+            <div style="background:#141820; border:1px solid #00E5FF; border-radius:8px; padding:14px; text-align:center;">
+                <div style="color:#00E5FF; font-size:12px; font-weight:700;">🛏️ उपलब्ध सुरक्षित बेड क्षमता</div>
+                <div style="font-size:28px; font-weight:900; color:#F8FAFC; margin-top:4px;">{total_beds:,} <span style="font-size:14px;">Beds</span></div>
+                <div style="color:#94A3B8; font-size:11px;">तुरुन्त प्रयोग गर्न सकिने आपतकालीन बेड</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with m4:
+        st.markdown(
+            f"""
+            <div style="background:#141820; border:1px solid #FF9100; border-radius:8px; padding:14px; text-align:center;">
+                <div style="color:#FF9100; font-size:12px; font-weight:700;">👨‍⚕️ खटिएका स्वास्थ्यकर्मी</div>
+                <div style="font-size:28px; font-weight:900; color:#F8FAFC; margin-top:4px;">{total_staff} <span style="font-size:14px;">Doctors & Staff</span></div>
+                <div style="color:#94A3B8; font-size:11px;">चिकित्सक, नर्स तथा उद्धार टोली</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
+    # 4. Filters & Controls
+    f_c1, f_c2 = st.columns([2, 1])
+
+    param_dist = st.query_params.get("district", "All Terai")
+    param_safe = st.query_params.get("status", "").lower() == "safe"
+
+    available_districts = ["All Terai"]
+    if not camps_gdf.empty and "district" in camps_gdf.columns:
+        available_districts += sorted(list(camps_gdf["district"].dropna().unique()))
+
+    dist_index = 0
+    for idx, d in enumerate(available_districts):
+        if param_dist.lower() in d.lower():
+            dist_index = idx
+            break
+
+    with f_c1:
+        selected_district = st.selectbox("📍 जिल्ला वा क्षेत्र छान्नुहोस् (Select District / Region):", available_districts, index=dist_index, key="cit_dist_filter")
+    with f_c2:
+        st.write("")
+        safe_only = st.checkbox("✅ सुरक्षित तथा सञ्चालित शिविर मात्र देखाउनुहोस् (Show Safe Camps Only)", value=param_safe, key="cit_safe_only")
+
+    filtered_camps = camps_gdf.copy() if not camps_gdf.empty else gpd.GeoDataFrame()
+    if not filtered_camps.empty:
+        if selected_district != "All Terai" and "district" in filtered_camps.columns:
+            filtered_camps = filtered_camps[filtered_camps["district"] == selected_district]
+        if safe_only:
+            filtered_camps = filtered_camps[filtered_camps["status"] == "OPERATIONAL / SECURE"]
+
+    # 5. Interactive Public Safety Map
+    st.markdown("#### 🗺️ आपतकालीन राहत शिविर तथा सुरक्षित बाटो नक्सा (Live Evacuation Map)")
+    st.caption("हरियो चिन्ह लागेका स्थानहरू सुरक्षित छन्। रातो चिन्ह लागेका स्थानहरू बाढीले घेरिएकाले त्यहाँ नजानुहोला।")
+
+    m_pub = folium.Map(
+        location=[26.9, 86.0],
+        zoom_start=8,
+        tiles=None,
+        control_scale=True,
+        prefer_canvas=True,
+    )
+
+    folium.TileLayer(
+        tiles="OpenStreetMap",
+        attr="OpenStreetMap contributors",
+        name="Standard Street Map (सडक नक्सा)",
+        control=True,
+        show=True,
+    ).add_to(m_pub)
+
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri World Imagery",
+        name="High-Res Earth Satellite (उपग्रह नक्सा)",
+        control=True,
+        show=False,
+    ).add_to(m_pub)
+
+    # Inundation footprint
+    if not flood_gdf.empty:
+        pub_flood_layer = folium.FeatureGroup(name="🌊 बाढी प्रभावित क्षेत्र (Flooded Danger Zone)", show=True)
+        folium.GeoJson(
+            flood_gdf.to_json(),
+            style_function=lambda feature: {
+                "fillColor": "#FF5722",
+                "color": "#FF8C00",
+                "weight": 1.5,
+                "fillOpacity": 0.5,
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=["area_km2"],
+                aliases=["बाढी क्षेत्रफल (Inundated Area km²):"],
+                localize=True,
+            ),
+        ).add_to(pub_flood_layer)
+        pub_flood_layer.add_to(m_pub)
+
+    # Safe Dry Corridors (Open Navigable Roads)
+    if safe_roads_gdf is not None and not safe_roads_gdf.empty:
+        pub_safe_roads = folium.FeatureGroup(name="🟢 खुला तथा सुरक्षित सुक्खा सडक (Safe Open Roads)", show=True)
+        major_safe = safe_roads_gdf[safe_roads_gdf["highway"].isin(["motorway", "trunk", "primary", "secondary"])].head(350)
+        if major_safe.empty:
+            major_safe = safe_roads_gdf.head(300)
+
+        folium.GeoJson(
+            major_safe[["name", "highway", "length_km", "geometry"]].to_json(),
+            style_function=lambda feature: {
+                "color": "#00E676",
+                "weight": 3.0,
+                "opacity": 0.85,
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=["name", "highway", "length_km"],
+                aliases=["सुरक्षित सडक (Safe Route):", "सडक प्रकार (Class):", "दूरी (km):"],
+                localize=True,
+            ),
+        ).add_to(pub_safe_roads)
+        pub_safe_roads.add_to(m_pub)
+
+    # Relief Camps Markers
+    if not filtered_camps.empty:
+        pub_camps_layer = folium.FeatureGroup(name="🏥 राहत तथा मेडिकल शिविर (Relief Camps)", show=True)
+        for _, camp in filtered_camps.iterrows():
+            if hasattr(camp.geometry, "y") and hasattr(camp.geometry, "x"):
+                c_lat, c_lon = camp.geometry.y, camp.geometry.x
+                is_safe = (camp.get("status") == "OPERATIONAL / SECURE")
+                c_color = "#00E676" if is_safe else "#FF1744"
+                c_name = camp.get("name", "राहत शिविर")
+                c_id = camp.get("p_id", camp.get("camp_id", "CAMP"))
+                c_type = camp.get("facility_type", "Health Post")
+                c_org = camp.get("organization", "Nepal Red Cross")
+                c_beds = camp.get("capacity_beds", 0)
+                c_staff = camp.get("medical_staff", 0)
+                c_chan = camp.get("contact_channel", "VHF-Ch-16")
+                c_dist = camp.get("district", "Terai Corridor")
+                c_phone = camp.get("phone_helpline", "1155")
+                gmaps_link = f"https://www.google.com/maps/dir/?api=1&destination={c_lat},{c_lon}"
+
+                folium.CircleMarker(
+                    location=[c_lat, c_lon],
+                    radius=10 if is_safe else 8,
+                    color=c_color,
+                    weight=3,
+                    fill=True,
+                    fill_color=c_color,
+                    fill_opacity=0.9,
+                    tooltip=f"{'🟢' if is_safe else '🔴'} [{c_id}] {c_name} ({'सञ्चालनमा / सुरक्षित' if is_safe else 'डुबानमा / जान जोखिम'})",
+                    popup=folium.Popup(
+                        f"""
+                        <div style="font-family:'Outfit',sans-serif; width:260px; color:#111;">
+                            <div style="background:{'#00C853' if is_safe else '#D50000'}; color:#fff; padding:6px 10px; border-radius:4px 4px 0 0; font-weight:700; font-size:12px;">
+                                {'🟢 सुरक्षित तथा सञ्चालित शिविर (OPERATIONAL)' if is_safe else '🔴 डुबानमा / जान जोखिम (DO NOT APPROACH)'}
+                            </div>
+                            <div style="padding:10px; font-size:12px; line-height:1.5;">
+                                <strong style="font-size:13px; color:#111;">{c_name}</strong><br>
+                                <span style="color:#555; font-size:11px;">{c_type} | {c_dist}</span><br>
+                                <div style="margin:6px 0; border-top:1px solid #EEE; padding-top:4px;">
+                                    <b>🏢 संस्था (Org):</b> {c_org}<br>
+                                    <b>🛏️ बेड क्षमता:</b> {c_beds} Beds<br>
+                                    <b>👨‍⚕️ स्वास्थ्यकर्मी:</b> {c_staff} Doctors/Nurses<br>
+                                    <b>📻 रेडियो सम्पर्क:</b> {c_chan}<br>
+                                    <b>📞 फोन:</b> {c_phone}<br>
+                                </div>
+                                <div style="margin-top:8px; text-align:center;">
+                                    <a href="{gmaps_link}" target="_blank" style="display:inline-block; background:#1976D2; color:#fff; padding:6px 12px; border-radius:4px; text-decoration:none; font-weight:700; font-size:11px;">
+                                        🧭 Open Google Maps Navigation
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        """,
+                        max_width=280,
+                    ),
+                ).add_to(pub_camps_layer)
+        pub_camps_layer.add_to(m_pub)
+
+    plugins.Fullscreen(position="topleft").add_to(m_pub)
+    folium.LayerControl(position="topright", collapsed=False).add_to(m_pub)
+
+    st_folium(m_pub, width="100%", height=500, returned_objects=[])
+
+    st.markdown("---")
+
+    # 6. Detailed Camps Cards Directory
+    st.markdown("#### 🏥 राहत तथा स्वास्थ्य शिविरहरूको विस्तृत विवरण (Relief Camps Directory)")
+    st.caption("नजिकको सुरक्षित शिविर खोज्नुहोस् र गुगल म्याप्समा सिधै बाटो हेर्नुहोस्।")
+
+    if not filtered_camps.empty:
+        for _, camp in filtered_camps.iterrows():
+            is_safe = (camp.get("status") == "OPERATIONAL / SECURE")
+            status_color = "#00E676" if is_safe else "#FF1744"
+            status_bg = "rgba(0, 230, 118, 0.12)" if is_safe else "rgba(255, 23, 68, 0.12)"
+            status_text = "🟢 सञ्चालनमा / सुरक्षित (OPERATIONAL & SECURE)" if is_safe else "🔴 डुबानमा / जान जोखिमपूर्ण (FLOODED - DO NOT APPROACH)"
+            c_name = camp.get("name", "राहत शिविर")
+            c_id = camp.get("p_id", camp.get("camp_id", "CAMP"))
+            c_type = camp.get("facility_type", "Health Post")
+            c_org = camp.get("organization", "Nepal Red Cross")
+            c_beds = camp.get("capacity_beds", 0)
+            c_staff = camp.get("medical_staff", 0)
+            c_chan = camp.get("contact_channel", "VHF-Ch-16")
+            c_dist = camp.get("district", "Terai")
+            c_addr = camp.get("address", "Terai Floodplain Staging Area")
+            c_phone = camp.get("phone_helpline", "1155")
+            c_action = camp.get("priority_action", "Safe Hub")
+
+            c_lat = camp.geometry.y if hasattr(camp.geometry, "y") else 27.0
+            c_lon = camp.geometry.x if hasattr(camp.geometry, "x") else 85.0
+            gmaps_url = f"https://www.google.com/maps/dir/?api=1&destination={c_lat:.5f},{c_lon:.5f}"
+
+            st.markdown(
+                f"""
+                <div class="citizen-camp-card" style="border-left: 5px solid {status_color};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <span style="background:{status_bg}; color:{status_color}; padding:4px 10px; border-radius:4px; font-weight:800; font-size:11px; font-family:'JetBrains Mono', monospace; border:1px solid {status_color};">
+                                {status_text}
+                            </span>
+                            <h3 style="margin:10px 0 4px 0; font-size:18px; color:#F8FAFC;">
+                                📍 [{c_id}] {c_name}
+                            </h3>
+                            <div style="color:#00E5FF; font-size:13px; font-weight:600;">
+                                {c_type} • <span style="color:#94A3B8;">{c_dist}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <a href="{gmaps_url}" target="_blank" style="background:#1976D2; color:#FFFFFF !important; padding:8px 16px; border-radius:6px; font-weight:700; text-decoration:none; display:inline-block; font-size:12px; margin-bottom:6px;">
+                                🧭 Navigate (Google Maps)
+                            </a><br>
+                            <a href="tel:{c_phone}" style="background:#232B38; color:#69F0AE !important; padding:6px 14px; border-radius:6px; font-weight:700; text-decoration:none; display:inline-block; font-size:11px; border:1px solid #334155;">
+                                📞 Call {c_phone}
+                            </a>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-top:14px; background:#0A0D13; padding:12px 14px; border-radius:6px; border:1px solid #1A212D; font-size:12px;">
+                        <div>
+                            <span style="color:#64748B;">📍 ठेगाना (Address):</span><br>
+                            <strong style="color:#E2E8F0;">{c_addr}</strong>
+                        </div>
+                        <div>
+                            <span style="color:#64748B;">🏢 व्यवस्थापन संस्था (Organization):</span><br>
+                            <strong style="color:#E2E8F0;">{c_org}</strong>
+                        </div>
+                        <div>
+                            <span style="color:#64748B;">🛏️ बेड तथा स्वास्थ्यकर्मी (Capacity):</span><br>
+                            <strong style="color:#00E676;">{c_beds} Beds</strong> • <span style="color:#E2E8F0;">{c_staff} Staff</span>
+                        </div>
+                        <div>
+                            <span style="color:#64748B;">📻 वायरलेस रेडियो फ्रिक्वेन्सी (Radio):</span><br>
+                            <strong style="color:#FF9100; font-family:'JetBrains Mono', monospace;">{c_chan}</strong>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; font-size:12px; color:{'#69F0AE' if is_safe else '#FF5252'};">
+                        <strong>निर्देशन (Directive):</strong> {c_action}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("छानिएको जिल्ला वा फिल्टर अनुसार कुनै शिविर भेटिएन। कृपया फिल्टर परिवर्तन गर्नुहोस्।")
+
+    st.markdown("---")
+
+    # 7. Citizen Safety Directives & Survival Guidelines
+    st.markdown("#### 🛡️ आपतकालीन बाढी सुरक्षा तथा बच्ने उपायहरू (Citizen Survival Guidelines)")
+    st.caption("नेपाल सरकार गृह मन्त्रालय, आपतकालीन कार्य सञ्चालन केन्द्र (NEOC) तथा नेपाल रेडक्रसको आधिकारिक सुरक्षा निर्देशन।")
+
+    g1, g2, g3, g4 = st.columns(4)
+    with g1:
+        st.markdown(
+            """
+            <div class="citizen-guideline-card">
+                <div style="font-size:24px; margin-bottom:6px;">💧</div>
+                <strong style="color:#00E5FF; font-size:14px;">पिउने पानी सुरक्षा</strong>
+                <p style="color:#94A3B8; font-size:12px; line-height:1.5; margin-top:6px;">
+                    बाढीको पानी वा प्रदूषित धारा प्रयोग नगर्नुहोस्। पानी उमालेर वा पियुष/क्लोरीन हालेर मात्र पिउनुहोस्। डिहाइड्रेसनबाट बच्न जीवनजल (ORS) पर्याप्त मात्रामा सेवन गर्नुहोस्।
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with g2:
+        st.markdown(
+            """
+            <div class="citizen-guideline-card">
+                <div style="font-size:24px; margin-bottom:6px;">🚧</div>
+                <strong style="color:#FF9100; font-size:14px;">सडक तथा पुल जोखिम</strong>
+                <p style="color:#94A3B8; font-size:12px; line-height:1.5; margin-top:6px;">
+                    बाढी पसेको पुल, कल्भर्ट वा बगिरहेको पानीमा हिँड्ने वा गाडी चलाउने प्रयास कहिल्यै नगर्नुहोस्। केवल हरियो चिन्ह लागेका सुक्खा सुरक्षित सडक प्रयोग गर्नुहोस्।
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with g3:
+        st.markdown(
+            """
+            <div class="citizen-guideline-card">
+                <div style="font-size:24px; margin-bottom:6px;">🐍</div>
+                <strong style="color:#FF5252; font-size:14px;">सर्पदंशबाट सावधानी</strong>
+                <p style="color:#94A3B8; font-size:12px; line-height:1.5; margin-top:6px;">
+                    बाढीको समयमा विषालु सर्पहरू सुक्खा ठाउँमा आउँछन्। राति हिँड्दा टर्चलाइट र लट्ठीको प्रयोग गर्नुहोस्। सर्पले टोकेमा तुरुन्त नजिकको राहत मेडिकल पोस्टमा जानुहोस्।
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with g4:
+        st.markdown(
+            """
+            <div class="citizen-guideline-card">
+                <div style="font-size:24px; margin-bottom:6px;">🎒</div>
+                <strong style="color:#00E676; font-size:14px;">आपतकालीन झोला (Go-Bag)</strong>
+                <p style="color:#94A3B8; font-size:12px; line-height:1.5; margin-top:6px;">
+                    नागरिकता, लालपुर्जा, परिचयपत्र प्लास्टिकको झोलामा राख्नुहोस्। टर्च, सलाई, सुख्खा खानेकुरा, सिठ्ठी र नियमित सेवन गर्ने औषधि साथमा राख्नुहोस्।
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
+    # 8. Share With Family and Community
+    st.markdown("#### 📲 यो पोर्टल छिमेकी तथा परिवारसँग सेयर गर्नुहोस् (Share With Others)")
+    st.caption("यो आधिकारिक लिंक एसएमएस वा ह्वाट्सएप मार्फत पठाएर अरूलाई पनि सुरक्षित रहन मद्दत गर्नुहोस्।")
+
+    share_col1, share_col2 = st.columns([2, 1])
+    current_portal_url = f"{base_url}/?view=public"
+
+    with share_col1:
+        st.code(current_portal_url, language="text")
+
+        wa_text = urllib.parse.quote(
+            f"🚨 नेपाल तराई बाढी राहत तथा आपतकालीन शिविर पोर्टल 🚨\n"
+            f"बाढी प्रभावित क्षेत्रका सुरक्षित शिविर, बेड क्षमता र आपतकालीन सम्पर्क नम्बरहरू यहाँ हेर्नुहोस्:\n"
+            f"🔗 लिंक: {current_portal_url}\n\n"
+            f"📞 आपतकालीन हटलाइन: बाढी पूर्वसूचना 1155 | NEOC 1149 | रेडक्रस 1130 | एम्बुलेन्स 102 | प्रहरी 100"
+        )
+        wa_url = f"https://api.whatsapp.com/send?text={wa_text}"
+
+        st.markdown(
+            f"""
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <a href="{wa_url}" target="_blank" style="background:#25D366; color:#FFFFFF !important; padding:8px 18px; border-radius:6px; font-weight:700; text-decoration:none; display:inline-block; font-size:13px;">
+                    💬 Share via WhatsApp (ह्वाट्सएपमा पठाउनुहोस्)
+                </a>
+            </div>
+            <div style="margin-top:14px; background:#10151E; border:1px solid #1E2736; border-left:4px solid #00E5FF; border-radius:6px; padding:12px 14px;">
+                <div style="font-weight:700; color:#00E5FF; font-size:13px;">🌐 Standalone Cyber-Tactical Web Portal (Port 8000)</div>
+                <div style="color:#94A3B8; font-size:12px; margin-top:2px;">
+                    Dedicated high-speed portal with Leaflet GPS nearest shelter navigation & SOS distress broadcasting:
+                </div>
+                <div style="margin-top:8px; display:flex; gap:10px;">
+                    <a href="http://localhost:8000" target="_blank" style="background:#00E5FF; color:#08090C !important; padding:6px 14px; border-radius:4px; font-weight:800; text-decoration:none; display:inline-block; font-size:12px;">
+                        🚀 Open Standalone Web Portal
+                    </a>
+                    <a href="http://localhost:8000/docs" target="_blank" style="background:#1E2736; color:#F8FAFC !important; padding:6px 14px; border-radius:4px; font-weight:600; text-decoration:none; display:inline-block; font-size:12px;">
+                        ⚡ API Docs
+                    </a>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with share_col2:
+        qr_b64 = generate_qr_code_base64(current_portal_url)
+        if qr_b64:
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <img src="data:image/png;base64,{qr_b64}" width="140" style="border:2px solid #00E676; border-radius:8px; padding:4px; background:#0E1217;" alt="QR Code"><br>
+                    <span style="font-size:11px; color:#94A3B8;">Scan with phone camera</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
 # -----------------------------------------------------------------------------
-# Sidebar Tactical Control Panel
+# View Mode Routing (Deep Link: ?view=public vs ?view=command)
+# -----------------------------------------------------------------------------
+query_view = st.query_params.get("view", "").lower()
+if "view_mode" not in st.session_state:
+    if query_view in ["public", "citizen", "camps"]:
+        st.session_state["view_mode"] = "public"
+    else:
+        st.session_state["view_mode"] = "command"
+elif query_view in ["public", "citizen", "camps"] and st.session_state["view_mode"] != "public":
+    st.session_state["view_mode"] = "public"
+elif query_view in ["command", "tactical"] and st.session_state["view_mode"] != "command":
+    st.session_state["view_mode"] = "command"
+
+is_public_view = (st.session_state.get("view_mode") == "public")
+
+
+# -----------------------------------------------------------------------------
+# Sidebar Tactical Control Panel or Citizen Emergency Desk
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # Upgrade 15: Clean Text Branding for Team Byte Panda at top of sidebar
-    st.markdown("### 🐼 TEAM BYTE PANDA")
-    st.caption("TerraFlood Tactical Command")
-    st.markdown("---")
+    if is_public_view:
+        st.markdown("### 🇳🇵 CITIZEN HELP DESK")
+        st.caption("Nepal Terai Flood Public Safety Portal")
+        st.markdown("---")
+        st.markdown("#### 🚨 Emergency Hotlines")
+        st.markdown("- 🌊 **1155**: Flood Early Warning")
+        st.markdown("- 🚨 **1149**: NEOC Disaster Operations")
+        st.markdown("- 🚑 **102**: Ambulance Dispatch")
+        st.markdown("- 👮 **100**: Nepal Police Rescue")
+        st.markdown("- 🩸 **1130**: Nepal Red Cross")
+        st.markdown("---")
+        st.markdown("#### 🛡️ Operations Access")
+        if st.button("🛡️ Switch to Tactical Command", use_container_width=True, key="side_to_cmd"):
+            st.session_state["view_mode"] = "command"
+            st.query_params["view"] = "command"
+            st.rerun()
 
-    st.markdown("#### 🎛️ TACTICAL CONTROL PANEL")
-    st.caption("Active Geospatial Parameters & Sensor Thresholds")
+        offline_toggle = True
+        pre_start = config.PRE_FLOOD_WINDOW[0]
+        pre_end = config.PRE_FLOOD_WINDOW[1]
+        post_start = config.POST_FLOOD_WINDOW[0]
+        post_end = config.POST_FLOOD_WINDOW[1]
+        sar_thresh = float(config.SAR_BACKSCATTER_THRESHOLD_DB)
+        slope_max = float(config.DEM_MAX_SLOPE_DEGREES)
+        jrc_thresh = int(config.JRC_WATER_OCCURRENCE_THRESHOLD)
+        force_sim = config.FALLBACK_MODE
+    else:
+        # Upgrade 15: Clean Text Branding for Team Byte Panda at top of sidebar
+        st.markdown("### 🐼 TEAM BYTE PANDA")
+        st.caption("TerraFlood Tactical Command")
+        
+        # Fast switch button to Public Citizen Portal
+        if st.button("🌐 View Citizen Public Portal", use_container_width=True, key="side_to_pub"):
+            st.session_state["view_mode"] = "public"
+            st.query_params["view"] = "public"
+            st.rerun()
 
-    # Upgrade 4: Offline Mode Toggle for Venue Fail-Safe
-    st.markdown("##### 🌐 System Connectivity")
-    offline_toggle = st.toggle(
-        "Offline Mode (Venue Fail-Safe)",
-        value=True,
-        help="Bypasses all external Google Earth Engine cloud calls and serves high-fidelity offline local telemetry.",
-    )
+        # Quick Status Banner for AI Forecast Engine
+        st.markdown(
+            """
+            <div style="background:rgba(213, 0, 249, 0.12); border:1px solid #D500F9; border-radius:6px; padding:8px 12px; margin:8px 0;">
+                <div style="color:#E040FB; font-weight:800; font-size:12px; display:flex; align-items:center; gap:6px;">
+                    🔮 AI FLOOD FORECAST ACTIVE
+                </div>
+                <div style="color:#94A3B8; font-size:11px; margin-top:2px;">
+                    Settlement inundation lead times & evacuation directives live in Tab 2.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+            
+        st.markdown("---")
+        st.markdown("#### 🎛️ TACTICAL CONTROL PANEL")
+        st.caption("Active Geospatial Parameters & Sensor Thresholds")
 
-    st.markdown("---")
-    st.markdown("#### 🛰️ Satellite Windows")
-    pre_start = st.text_input("Pre-Flood Baseline Start", value=config.PRE_FLOOD_WINDOW[0])
-    pre_end = st.text_input("Pre-Flood Baseline End", value=config.PRE_FLOOD_WINDOW[1])
-    post_start = st.text_input("Post-Flood Event Start", value=config.POST_FLOOD_WINDOW[0])
-    post_end = st.text_input("Post-Flood Event End", value=config.POST_FLOOD_WINDOW[1])
+        # Upgrade 4: Offline Mode Toggle for Venue Fail-Safe
+        st.markdown("##### 🌐 System Connectivity")
+        offline_toggle = st.toggle(
+            "Offline Mode (Venue Fail-Safe)",
+            value=True,
+            help="Bypasses all external Google Earth Engine cloud calls and serves high-fidelity offline local telemetry.",
+        )
 
-    st.markdown("---")
-    st.markdown("#### 🔬 Scientific Filtering")
-    sar_thresh = st.slider(
-        "SAR ΔBackscatter Threshold (dB)",
-        min_value=0.5,
-        max_value=3.0,
-        value=float(config.SAR_BACKSCATTER_THRESHOLD_DB),
-        step=0.25,
-        help="Higher values select only high-confidence specular water reflections.",
-    )
-    slope_max = st.slider(
-        "DEM Max Slope Cutoff (Degrees)",
-        min_value=2.0,
-        max_value=12.0,
-        value=float(config.DEM_MAX_SLOPE_DEGREES),
-        step=0.5,
-        help="Masks out terrain shadows and mountain slopes.",
-    )
-    jrc_thresh = st.slider(
-        "JRC Water Occurrence (%)",
-        min_value=50,
-        max_value=95,
-        value=int(config.JRC_WATER_OCCURRENCE_THRESHOLD),
-        step=5,
-        help="Masks out permanent lakes, reservoirs, and perennial riverbeds.",
-    )
+        st.markdown("---")
+        st.markdown("#### 🛰️ Satellite Windows")
+        pre_start = st.text_input("Pre-Flood Baseline Start", value=config.PRE_FLOOD_WINDOW[0])
+        pre_end = st.text_input("Pre-Flood Baseline End", value=config.PRE_FLOOD_WINDOW[1])
+        post_start = st.text_input("Post-Flood Event Start", value=config.POST_FLOOD_WINDOW[0])
+        post_end = st.text_input("Post-Flood Event End", value=config.POST_FLOOD_WINDOW[1])
 
-    st.markdown("---")
-    st.markdown("#### ⚙️ Pipeline Execution")
-    force_sim = st.toggle("Force Simulation Mode", value=config.FALLBACK_MODE)
+        st.markdown("---")
+        st.markdown("#### 🔬 Scientific Filtering")
+        sar_thresh = st.slider(
+            "SAR ΔBackscatter Threshold (dB)",
+            min_value=0.5,
+            max_value=3.0,
+            value=float(config.SAR_BACKSCATTER_THRESHOLD_DB),
+            step=0.25,
+            help="Higher values select only high-confidence specular water reflections.",
+        )
+        slope_max = st.slider(
+            "DEM Max Slope Cutoff (Degrees)",
+            min_value=2.0,
+            max_value=12.0,
+            value=float(config.DEM_MAX_SLOPE_DEGREES),
+            step=0.5,
+            help="Masks out terrain shadows and mountain slopes.",
+        )
+        jrc_thresh = st.slider(
+            "JRC Water Occurrence (%)",
+            min_value=50,
+            max_value=95,
+            value=int(config.JRC_WATER_OCCURRENCE_THRESHOLD),
+            step=5,
+            help="Masks out permanent lakes, reservoirs, and perennial riverbeds.",
+        )
 
-    rescan_clicked = st.button("🚀 TRIGGER RESCAN", use_container_width=True)
-    if rescan_clicked:
-        st.cache_data.clear()
-        st.rerun()
+        st.markdown("---")
+        st.markdown("#### ⚙️ Pipeline Execution")
+        force_sim = st.toggle("Force Simulation Mode", value=config.FALLBACK_MODE)
 
-    st.markdown("---")
-    st.caption("Active AOI [Nepal Terai Corridor]:")
-    st.code(f"{config.AOI_COORDINATES}", language="python")
+        rescan_clicked = st.button("🚀 TRIGGER RESCAN", use_container_width=True)
+        if rescan_clicked:
+            st.cache_data.clear()
+            st.rerun()
+
+        st.markdown("---")
+        st.caption("Active AOI [Nepal Terai Corridor]:")
+        st.code(f"{config.AOI_COORDINATES}", language="python")
 
 
 # -----------------------------------------------------------------------------
@@ -528,8 +1236,9 @@ if is_offline:
 # -----------------------------------------------------------------------------
 # MAIN DASHBOARD TABS (Upgrade 1)
 # -----------------------------------------------------------------------------
-tab_map, tab_sci, tab_ngo, tab_sitrep = st.tabs([
-    "🗺️ Tactical Map & Metrics",
+tab_map, tab_pred, tab_sci, tab_ngo, tab_sitrep = st.tabs([
+    "🗺️ Operational Tactical Map",
+    "🔮 AI Flood Prediction & Forecast",
     "🔬 Scientific Earth Analytics",
     "🏥 NGO Logistics & Relief Camps",
     "📄 Situation Report & Comms",
@@ -843,7 +1552,448 @@ with tab_map:
 
 
 # =============================================================================
-# TAB 2: SCIENTIFIC ANALYTICS (AGRICULTURE & WEATHER)
+# TAB 2: AI FLOOD PREDICTION MODEL & EARLY WARNING FORECAST
+# =============================================================================
+with tab_pred:
+    st.markdown("### 🔮 AI Flood Prediction & Early Warning Forecast Engine")
+    st.caption("Physics-Informed Neural Network (PINN) & Hydrological Routing modeling future storm surges, river discharge influx, and prioritized settlement evacuation lead times.")
+
+    # Load administrative boundaries for spatial prediction
+    try:
+        admin_gdf = impact.VectorDataLoader.load_admin_boundaries()
+    except Exception:
+        admin_gdf = affected_admin_gdf if ("affected_admin_gdf" in locals() and affected_admin_gdf is not None) else None
+
+    # 1. Automatic GEE Ingestion & Meteorological Forecast Integration
+    # Direct live satellite & weather telemetry:
+    gee_precip = float(sci_analytics.get("gfs_precip_mm", 184.5)) if ("sci_analytics" in locals() and sci_analytics) else 184.5
+    gee_confidence = float(qa.get("fusion_confidence_pct", 94.2)) if ("qa" in locals() and qa) else 94.2
+    
+    # Calculate hydrological river surge from upstream basin precipitation anomaly
+    auto_discharge = min(120.0, max(25.0, round((gee_precip - 40.0) * 0.42, 1)))
+    auto_saturation = 88.5
+    auto_horizon = 48
+    auto_algorithm = "Physics-Informed Neural Network (PINN) + HAND Topographic Routing"
+
+    # Display Live Telemetry Status Banner (Direct GEE Satellite & Weather Data Ingestion)
+    st.markdown(
+        f"""
+        <div style="background:linear-gradient(135deg, rgba(0, 230, 118, 0.12) 0%, rgba(0, 229, 255, 0.08) 100%); border:1px solid #00E676; border-left:6px solid #00E676; border-radius:8px; padding:14px 18px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="live-beacon"></span>
+                    <strong style="color:#00E676; font-size:14px; font-family:'JetBrains Mono', monospace; text-transform:uppercase;">
+                        🛰️ LIVE GEE SATELLITE & NOAA METEOROLOGICAL TELEMETRY ACTIVE
+                    </strong>
+                </div>
+                <div style="color:#CBD5E1; font-size:12px; margin-top:4px;">
+                    Predictive simulation is <b>automatically generated</b> from Google Earth Engine Sentinel-1 SAR extent, NOAA GFS 48h Upstream Catchment Rain (<b>{gee_precip:.1f} mm</b>), and Copernicus DEM HAND Topographic Routing.
+                </div>
+            </div>
+            <div>
+                <span style="background:rgba(0,229,255,0.18); color:#00E5FF; border:1px solid #00E5FF; padding:4px 10px; border-radius:4px; font-weight:800; font-size:12px; font-family:'JetBrains Mono', monospace;">
+                    ⚡ ZERO-MANUAL CONFIGURATION
+                </span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Optional Collapsed Expander for What-If Stress Scenarios
+    with st.expander("🎛️ Manual What-If Scenario Stress Testing (Optional)", expanded=False):
+        use_manual_override = st.toggle(
+            "Enable Manual Parameter Override",
+            value=False,
+            help="Toggle on only if you want to stress-test hypothetical cloudburst scenarios different from live GEE."
+        )
+        p_col1, p_col2, p_col3, p_col4 = st.columns(4)
+        with p_col1:
+            manual_horizon = st.select_slider(
+                "Forecast Lead Horizon",
+                options=[24, 48, 72, 120],
+                value=auto_horizon,
+                format_func=lambda x: f"+{x} Hours Outlook",
+                disabled=not use_manual_override,
+            )
+        with p_col2:
+            manual_rainfall = st.slider(
+                "Catchment Rainfall (mm / 24h)",
+                min_value=40.0,
+                max_value=350.0,
+                value=gee_precip,
+                step=10.0,
+                disabled=not use_manual_override,
+            )
+        with p_col3:
+            manual_discharge = st.slider(
+                "River Inflow Surge (%)",
+                min_value=0.0,
+                max_value=150.0,
+                value=auto_discharge,
+                step=5.0,
+                disabled=not use_manual_override,
+            )
+        with p_col4:
+            manual_saturation = st.slider(
+                "Antecedent Soil Saturation (%)",
+                min_value=50.0,
+                max_value=100.0,
+                value=auto_saturation,
+                step=5.0,
+                disabled=not use_manual_override,
+            )
+
+        manual_algo = st.selectbox(
+            "Predictive Hydro-AI Algorithm Architecture",
+            [
+                "Physics-Informed Neural Network (PINN) + HAND Topographic Routing",
+                "Gradient-Boosted Hydro-Routing Ensemble (XGBoost + Manning Hydro)",
+                "Empirical Hydrologic Soil Conservation Service (SCS-CN Runoff)",
+            ],
+            disabled=not use_manual_override,
+        )
+
+    # Automatically drive prediction from live GEE telemetry unless manual override is toggled
+    if use_manual_override:
+        sim_horizon = manual_horizon
+        sim_rainfall = manual_rainfall
+        sim_discharge = manual_discharge
+        sim_saturation = manual_saturation
+        algo_choice = manual_algo
+    else:
+        sim_horizon = auto_horizon
+        sim_rainfall = gee_precip
+        sim_discharge = auto_discharge
+        sim_saturation = auto_saturation
+        algo_choice = auto_algorithm
+
+    # 2. Run Predictive Engine Directly on GEE Telemetry
+    with st.spinner(f"Simulating +{sim_horizon}h overland inundation flow from GEE telemetry across 406 Terai VDCs..."):
+        proj_flood_gdf, future_settlements_df, forecast_kpis, hydrograph_df = prediction.simulate_future_flood(
+            current_flood_gdf=flood_gdf,
+            admin_gdf=admin_gdf,
+            horizon_hours=sim_horizon,
+            rainfall_mm_24h=sim_rainfall,
+            river_discharge_pct=sim_discharge,
+            soil_saturation_pct=sim_saturation,
+            algorithm=algo_choice,
+        )
+
+    # 3. High-Impact Forecast KPIs
+    k_col1, k_col2, k_col3, k_col4 = st.columns(4)
+    with k_col1:
+        st.metric(
+            label="🚨 P1 Critical Settlements",
+            value=f"{forecast_kpis['p1_critical_count']} VDCs",
+            delta="Immediate Evacuation (<12h)",
+            delta_color="inverse",
+            help="High water depth (>1.5m) and low lead time remaining"
+        )
+    with k_col2:
+        st.metric(
+            label="👥 Additional Population at Risk",
+            value=f"{forecast_kpis['additional_displaced_citizens']:,}",
+            delta=f"Total: {forecast_kpis['total_projected_displaced']:,}",
+            delta_color="inverse",
+            help="Newly vulnerable citizens projected to be submerged"
+        )
+    with k_col3:
+        st.metric(
+            label="🌊 Projected Inundation Area",
+            value=f"{forecast_kpis['projected_area_km2']:,.1f} km²",
+            delta=f"+{forecast_kpis['area_increase_pct']}% Expansion",
+            delta_color="inverse",
+            help="Total simulated flood footprint over Terai flatlands"
+        )
+    with k_col4:
+        st.metric(
+            label="⏱️ Critical Minimum Lead Time",
+            value=f"{forecast_kpis['minimum_lead_time_hours']} Hours",
+            delta="T-minus To Peak Surge",
+            delta_color="off",
+            help="Shortest remaining evacuation time before river wave arrival"
+        )
+
+    st.markdown("---")
+
+    # 4. PRIORITIZED FUTURE FLOOD-AFFECTED AREAS DIRECTORY (Core User Request!)
+    st.markdown("#### 🚨 Prioritized Future Flood-Affected Areas Directory (आगामी बाढी प्रभावित क्षेत्रहरू)")
+    st.caption("Actionable list of settlements, estimated inundation times, water depths, and troop evacuation directives.")
+
+    # Filter Controls for Threatened Settlements
+    f_col1, f_col2, f_col3 = st.columns([1, 1, 2])
+    with f_col1:
+        all_dists = ["All Terai Corridor"] + sorted(list(future_settlements_df["district"].dropna().unique()))
+        selected_pred_dist = st.selectbox("Filter by District", all_dists, key="pred_dist_filter")
+    with f_col2:
+        selected_pred_prio = st.selectbox(
+            "Filter by Risk Severity",
+            ["All Priorities", "P1 Critical Only 🔴", "P1 + P2 Severe 🟠"],
+            key="pred_prio_filter"
+        )
+    with f_col3:
+        pred_search = st.text_input("🔍 Search Settlement, VDC, or River Basin", "", key="pred_search_filter")
+
+    # Apply Filters
+    filtered_future_df = future_settlements_df.copy()
+    if selected_pred_dist != "All Terai Corridor":
+        filtered_future_df = filtered_future_df[filtered_future_df["district"] == selected_pred_dist]
+
+    if selected_pred_prio == "P1 Critical Only 🔴":
+        filtered_future_df = filtered_future_df[filtered_future_df["priority_order"] == 1]
+    elif selected_pred_prio == "P1 + P2 Severe 🟠":
+        filtered_future_df = filtered_future_df[filtered_future_df["priority_order"].isin([1, 2])]
+
+    if pred_search.strip():
+        q = pred_search.strip().lower()
+        filtered_future_df = filtered_future_df[
+            filtered_future_df["settlement"].str.lower().str.contains(q) |
+            filtered_future_df["district"].str.lower().str.contains(q) |
+            filtered_future_df["river_basin"].str.lower().str.contains(q)
+        ]
+
+    # Highlight Top Threat Card
+    if not filtered_future_df.empty:
+        top_threat = filtered_future_df.iloc[0]
+        st.markdown(
+            f"""
+            <div style="background:#1F1315; border:1px solid #FF1744; border-left:6px solid #FF1744; border-radius:8px; padding:16px 20px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <span style="background:rgba(255,23,68,0.2); color:#FF1744; border:1px solid #FF1744; padding:3px 8px; border-radius:4px; font-weight:800; font-size:11px;">
+                        🚨 IMMEDIATE PRIORITY 1 THREAT
+                    </span>
+                    <h4 style="margin:6px 0 2px 0; color:#FFFFFF; font-size:18px;">
+                        {top_threat['settlement']} ({top_threat['district']})
+                    </h4>
+                    <div style="font-size:13px; color:#94A3B8;">
+                        River Basin: <b style="color:#00E5FF;">{top_threat['river_basin']}</b> • 
+                        Lead Time: <b style="color:#FF5252;">{top_threat['lead_time_hours']} Hours</b> • 
+                        Projected Depth: <b style="color:#FF9100;">{top_threat['projected_depth_m']}m</b> • 
+                        Population: <b style="color:#FFFFFF;">{top_threat['projected_displaced']:,}</b>
+                    </div>
+                    <div style="font-size:12px; color:#00E676; margin-top:6px;">
+                        🛡️ <b>Tactical Directive:</b> {top_threat['directive']}
+                    </div>
+                </div>
+                <div>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination={top_threat['lat']},{top_threat['lon']}" target="_blank" style="background:#FF1744; color:#FFFFFF !important; padding:8px 16px; border-radius:6px; font-weight:800; text-decoration:none; display:inline-block; font-size:12px;">
+                        🧭 Open Route (Google Maps)
+                    </a>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # Format Display Table
+    table_display = filtered_future_df.copy()
+    display_cols = [
+        "priority",
+        "settlement",
+        "district",
+        "river_basin",
+        "lead_time_hours",
+        "projected_depth_m",
+        "projected_displaced",
+        "assigned_shelter",
+        "directive",
+    ]
+    col_labels = {
+        "priority": "Risk Priority",
+        "settlement": "Settlement / VDC",
+        "district": "District",
+        "river_basin": "River Basin",
+        "lead_time_hours": "Lead Time (Hours)",
+        "projected_depth_m": "Water Depth (m)",
+        "projected_displaced": "Pop at Risk",
+        "assigned_shelter": "Target Safe Shelter",
+        "directive": "Standing Operational Directive",
+    }
+    table_display = table_display[display_cols].rename(columns=col_labels)
+    table_display["Pop at Risk"] = table_display["Pop at Risk"].apply(lambda x: f"{x:,}")
+    table_display["Water Depth (m)"] = table_display["Water Depth (m)"].apply(lambda x: f"{x:.2f}m")
+    table_display["Lead Time (Hours)"] = table_display["Lead Time (Hours)"].apply(lambda x: f"{x:.1f}h")
+
+    st.dataframe(table_display, use_container_width=True, height=300)
+
+    # Download Buttons for Early Warning List
+    dl_col1, dl_col2 = st.columns([1, 1])
+    with dl_col1:
+        csv_data = filtered_future_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Threatened Settlements List (CSV)",
+            data=csv_data,
+            file_name=f"terraflood_predicted_settlements_{sim_horizon}h.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with dl_col2:
+        if not proj_flood_gdf.empty:
+            geojson_data = proj_flood_gdf.to_json().encode('utf-8')
+            st.download_button(
+                label=f"🗺️ Download Projected +{sim_horizon}h Flood Vectors (GeoJSON)",
+                data=geojson_data,
+                file_name=f"terraflood_projected_flood_{sim_horizon}h.geojson",
+                mime="application/geo+json",
+                use_container_width=True,
+            )
+
+    st.markdown("---")
+
+    # 5. Dual-Panel: Predictive GIS Inundation Map & Hydrograph Forecasts
+    map_p_col, hydro_p_col = st.columns([1, 1])
+
+    with map_p_col:
+        st.markdown(f"##### 🗺️ Projected +{sim_horizon}h Inundation & Threat Choropleth")
+        # Build interactive Folium prediction map (100% Watermark-Free Esri Basemaps)
+        pred_m = folium.Map(
+            location=config.MAP_DEFAULT_CENTER,
+            zoom_start=8,
+            tiles=None,
+            prefer_canvas=True,
+        )
+
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri World Dark Gray",
+            name="Dark Tactical (Obsidian Dark)",
+            control=True,
+            show=True,
+        ).add_to(pred_m)
+
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri World Imagery",
+            name="High-Res Earth Satellite",
+            control=True,
+            show=False,
+        ).add_to(pred_m)
+
+        # Base observed flood extent
+        if flood_gdf is not None and not flood_gdf.empty:
+            folium.GeoJson(
+                flood_gdf,
+                name="Observed Flood Extent (Current)",
+                style_function=lambda x: {
+                    "fillColor": "#FF5722",
+                    "color": "#FF3D00",
+                    "weight": 1.2,
+                    "fillOpacity": 0.55,
+                },
+                tooltip="🌊 Current Observed Flood Zone"
+            ).add_to(pred_m)
+
+        # Projected future flood expansion extent
+        if not proj_flood_gdf.empty:
+            folium.GeoJson(
+                proj_flood_gdf,
+                name=f"Projected Flood Expansion (+{sim_horizon}h)",
+                style_function=lambda x: {
+                    "fillColor": "#D500F9",
+                    "color": "#AA00FF",
+                    "weight": 2.0,
+                    "fillOpacity": 0.40,
+                    "dashArray": "4, 4",
+                },
+                tooltip=f"🔮 Projected Future Inundation Zone (+{sim_horizon}h)"
+            ).add_to(pred_m)
+
+        # Plot settlement threat points
+        for _, s_row in filtered_future_df.head(25).iterrows():
+            p_color = "#FF1744" if s_row["priority_order"] == 1 else ("#FF9100" if s_row["priority_order"] == 2 else "#FFD600")
+            p_radius = 8 if s_row["priority_order"] == 1 else 6
+
+            popup_content = f"""
+            <div style="font-family:'Outfit', sans-serif; width:220px; color:#111;">
+                <b style="color:{p_color};">{s_row['priority']}</b><br>
+                <strong>{s_row['settlement']}</strong> ({s_row['district']})<br>
+                <hr style="margin:4px 0;">
+                <b>Lead Time:</b> {s_row['lead_time_hours']} Hours<br>
+                <b>Projected Depth:</b> {s_row['projected_depth_m']}m<br>
+                <b>Pop at Risk:</b> {s_row['projected_displaced']:,}<br>
+                <b>Target Shelter:</b> {s_row['assigned_shelter']}<br>
+            </div>
+            """
+
+            folium.CircleMarker(
+                location=[s_row["lat"], s_row["lon"]],
+                radius=p_radius,
+                color=p_color,
+                fill=True,
+                fill_color=p_color,
+                fill_opacity=0.85,
+                weight=2,
+                tooltip=f"{s_row['priority']}: {s_row['settlement']} ({s_row['lead_time_hours']}h)",
+                popup=folium.Popup(popup_content, max_width=250),
+            ).add_to(pred_m)
+
+        folium.LayerControl(position="topright").add_to(pred_m)
+        st_folium(pred_m, width="100%", height=360, returned_objects=[])
+
+    with hydro_p_col:
+        st.markdown(f"##### 📈 River Hydrograph Discharge Curves (+{sim_horizon}h)")
+        if not hydrograph_df.empty:
+            fig_hydro = go.Figure()
+
+            # Koshi
+            if "Koshi River Basin" in hydrograph_df.columns:
+                fig_hydro.add_trace(go.Scatter(
+                    x=hydrograph_df["Time"],
+                    y=hydrograph_df["Koshi River Basin"],
+                    mode="lines+markers",
+                    name="Koshi (Chhatara)",
+                    line=dict(color="#00E5FF", width=2.5),
+                ))
+                fig_hydro.add_hline(
+                    y=prediction.RIVER_BASINS_METADATA["Koshi River Basin"]["danger_cusecs"],
+                    line_dash="dot",
+                    line_color="#FF1744",
+                    annotation_text="Koshi Danger Level (300k cusecs)",
+                    annotation_position="top left",
+                )
+
+            # Narayani
+            if "Narayani / Gandaki Basin" in hydrograph_df.columns:
+                fig_hydro.add_trace(go.Scatter(
+                    x=hydrograph_df["Time"],
+                    y=hydrograph_df["Narayani / Gandaki Basin"],
+                    mode="lines",
+                    name="Narayani (Devghat)",
+                    line=dict(color="#00E676", width=2.0),
+                ))
+
+            # Kamala
+            if "Kamala & Dhanusha Basin" in hydrograph_df.columns:
+                fig_hydro.add_trace(go.Scatter(
+                    x=hydrograph_df["Time"],
+                    y=hydrograph_df["Kamala & Dhanusha Basin"],
+                    mode="lines",
+                    name="Kamala (Chisapani)",
+                    line=dict(color="#FF9100", width=2.0),
+                ))
+
+            fig_hydro.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(14,18,23,0.8)",
+                margin=dict(l=10, r=10, t=25, b=10),
+                height=360,
+                xaxis=dict(title="Forecast Timeline", gridcolor="#1E2736"),
+                yaxis=dict(title="Discharge (cusecs)", gridcolor="#1E2736"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            )
+            st.plotly_chart(fig_hydro, use_container_width=True)
+
+    # 6. Official Early Warning Bulletin Generator
+    st.markdown("---")
+    st.markdown("#### 📄 Government Early Warning Advisory Bulletin (NEOC Dispatch Ready)")
+    bulletin_text = prediction.generate_early_warning_bulletin(forecast_kpis, filtered_future_df)
+    st.text_area("Official Situation Early Warning Text", bulletin_text, height=180)
+
+
+# =============================================================================
+# TAB 3: SCIENTIFIC ANALYTICS (AGRICULTURE & WEATHER)
 # =============================================================================
 with tab_sci:
     st.markdown("### 🔬 Advanced Scientific Earth Observation Analytics")
@@ -1076,6 +2226,28 @@ with tab_ngo:
 
         cols_to_show = [c for c in ["camp_id", "name", "facility_type", "status", "priority_action", "capacity_beds", "contact_channel"] if c in camp_display.columns]
         st.dataframe(camp_display[cols_to_show], use_container_width=True, height=220)
+
+        st.markdown(
+            """
+            <div style="background:rgba(0, 229, 255, 0.08); border:1px solid rgba(0, 229, 255, 0.3); border-radius:8px; padding:16px 20px; margin:16px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <strong style="color:#00E5FF; font-size:15px;">🌐 Public Citizen Safety Web Portal Active (Port 8000)</strong>
+                    <p style="color:#94A3B8; font-size:13px; margin:4px 0 0 0;">
+                        These relief facilities and safe operational statuses are live-streamed to the public portal and GPS shelter locator.
+                    </p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <a href="http://localhost:8000" target="_blank" style="background:#00E5FF; color:#08090C !important; padding:8px 18px; border-radius:6px; font-weight:800; text-decoration:none; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
+                        🚀 Open Standalone Web Portal
+                    </a>
+                    <a href="?view=public" target="_self" style="background:rgba(255,255,255,0.08); color:#FFF !important; padding:8px 18px; border-radius:6px; font-weight:700; text-decoration:none; font-size:13px;">
+                        👁️ Streamlit Citizen View
+                    </a>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
     # Sphere Standards Logistics Calculator

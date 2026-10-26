@@ -77,9 +77,16 @@ Terraflood/
 │   ├── app.py                 # Tactical Operations Command Center HUD (Streamlit + Folium):
 │   │                          # - Custom obsidian dark operations styling (#08090C, #FF6D00, #FF1744, #00E676)
 │   │                          # - Tab 1: Tactical Map & Metrics (Top KPIs, Watermark-free Esri Dark map, Safe routes)
-│   │                          # - Tab 2: Scientific Earth Analytics (Agriculture, GFS Weather, ML & HAND layers)
-│   │                          # - Tab 3: NGO Custom Logistics (Shapefile/GeoJSON uploader, Camp status, Sphere calculator)
-│   │                          # - Tab 4: Situation Report & Comms (1-Click SitRep Emailer, GeoJSON/CSV/PDF exports)
+│   │                          # - Tab 1: Tactical Map & Metrics (Top KPIs, Infrastructure Damage, Dual-layer Map with Safe Routes)
+│   │                          # - Tab 2: AI Flood Prediction & Early Warning (Hydrodynamic forecast, Future affected settlements list, Hydrographs)
+│   │                          # - Tab 3: Scientific Earth Analytics (Agriculture, GFS Weather, ML & HAND layers)
+│   │                          # - Tab 4: NGO Custom Logistics (Shapefile/GeoJSON uploader, Camp status, Sphere calculator)
+│   │                          # - Tab 5: Situation Report & Comms (1-Click SitRep Emailer, GeoJSON/CSV/PDF exports)
+│   ├── prediction.py          # AI Flood Prediction & Early Warning Engine:
+│   │                          # - Hydrodynamic flood expansion simulation (24h, 48h, 72h, 120h horizons)
+│   │                          # - Settlement exposure quantification with lead time to peak surge
+│   │                          # - River basin hydrograph curves (Koshi, Narayani, Kamala, Bagmati, West Rapti)
+│   │                          # - Official formatted Disaster Early Warning Bulletin generator
 │   ├── export_utils.py        # Automated Humanitarian Packaging & Export Utilities:
 │   │                          # - Executive 1-Page Disaster Situation Report (SitRep) PDF compiler (FPDF2)
 │   │                          # - WGS84 GeoJSON exporter for flood polygons & severed transport lines
@@ -138,7 +145,17 @@ Or directly via Streamlit:
 ```bash
 streamlit run terraflood/app.py
 ```
-Open your browser to: **`http://localhost:8501`**
+- Tactical Command HUD: **`http://localhost:8501`**
+- Citizen Public Deep-Link: **`http://localhost:8501/?view=public`**
+
+### 4. Launch the Public Citizen Web Portal & REST API
+Launch the standalone cyber-tactical citizen web portal and FastAPI backend:
+```bash
+python run_portal.py
+```
+- 🌐 **Public Citizen Web Portal:** **`http://localhost:8000`** (Real-time Leaflet GIS map, GPS nearest shelter finder, Google Maps turn-by-turn navigation, bilingual EN/नेपाली switch, and Citizen SOS reporting)
+- ⚡ **Interactive REST API & Swagger Docs:** **`http://localhost:8000/docs`**
+- 🚨 **Live Citizen SOS Dispatch Queue:** **`http://localhost:8000/api/sos`**
 
 ---
 

@@ -22,3 +22,8 @@ test.pdf
 Thumbs.db
 .vscode/
 .idea/
+.webui_secret_key
+node_modules/
+dist/
+.dist/
+

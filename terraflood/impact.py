@@ -459,6 +459,20 @@ def assess_uploaded_camps(
             else:
                 camps_gdf["name"] = [f"Relief Facility #{i+1}" for i in range(len(camps_gdf))]
 
+        # Standardize facility ID columns (supporting both p_id and camp_id)
+        if "camp_id" not in camps_gdf.columns and "p_id" not in camps_gdf.columns:
+            for cand in ["ID", "id", "camp_code", "facility_id"]:
+                if cand in camps_gdf.columns:
+                    camps_gdf["camp_id"] = camps_gdf[cand]
+                    break
+            else:
+                camps_gdf["camp_id"] = [f"IP-{i+1:03d}" for i in range(len(camps_gdf))]
+
+        if "camp_id" in camps_gdf.columns and "p_id" not in camps_gdf.columns:
+            camps_gdf["p_id"] = camps_gdf["camp_id"]
+        elif "p_id" in camps_gdf.columns and "camp_id" not in camps_gdf.columns:
+            camps_gdf["camp_id"] = camps_gdf["p_id"]
+
         if "facility_type" not in camps_gdf.columns:
             camps_gdf["facility_type"] = "Humanitarian Medical Post"
 
